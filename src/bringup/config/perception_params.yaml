@@ -1,0 +1,14 @@
+perception_node:
+  ros__parameters:
+    class_map_yaml: "{0: BACKGROUND, 1: LEAF, 2: STEM_OR_PETIOLE}"
+    skeleton_method: "opencv"
+    branch_kernel_size: 3
+    node_association_max_dist_px: 30
+    node_max_age_frames: 10
+    depth_min_mm: 100
+    depth_max_mm: 3000
+    cut_y_threshold_px: 300
+    cut_leaf_density_radius_px: 50
+    cut_leaf_density_threshold: 0.4
+    cut_min_confidence: 0.3
+    publish_debug_overlay: true

@@ -1,0 +1,44 @@
+# LRASPP-MobileNetV3-Large segmentation model configuration
+# This file documents the model contract between training and OAK-D deployment.
+
+model:
+  name: lraspp_mobilenetv3_large
+  architecture: LRASPP-MobileNetV3-Large
+  pretrained_weights: torchvision DEFAULT (COCO-VOC)
+
+input:
+  width: 256
+  height: 256
+  channels: 3
+  # OAK ImageManip sends BGR888p (planar BGR uint8)
+  color_format: BGR
+  # Normalization baked into OpenVINO IR via --mean_values / --scale_values
+  mean: [123.675, 116.28, 103.53]   # ImageNet BGR means
+  scale: [58.395, 57.12, 57.375]    # ImageNet BGR std devs
+
+output:
+  shape: [1, 3, 256, 256]  # (batch, num_classes, H, W)
+  dtype: FP16
+  # OAK reads FP16 flat array → reshape (3,256,256) → argmax → mono8
+
+classes:
+  num_classes: 3
+  mapping:
+    0: BACKGROUND
+    1: LEAF
+    2: STEM_OR_PETIOLE
+
+training:
+  loss_weights: [0.5, 2.0, 3.0]  # BG, LEAF, STEM — prioritize stem detection
+  optimizer: AdamW
+  scheduler: CosineAnnealingLR
+  default_lr: 0.001
+  default_epochs: 50
+  default_batch_size: 8
+
+export:
+  onnx_opset: 12
+  openvino_precision: FP16
+  # mo flags: --reverse_input_channels bakes BGR→RGB swap into IR
+  # --mean_values and --scale_values bake normalization into IR
+  oak_shaves: 6

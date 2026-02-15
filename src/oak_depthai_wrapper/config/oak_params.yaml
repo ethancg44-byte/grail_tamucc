@@ -1,0 +1,12 @@
+oak_camera_node:
+  ros__parameters:
+    resolution_width: 640
+    resolution_height: 480
+    fps: 15
+    ir_projector_enable: false
+    exposure_us: 0  # 0 = auto exposure
+    model_blob_path: ''  # path to .blob for on-device NN; empty = no NN
+    enable_mock_nn: true  # publish synthetic data without OAK hardware
+    nn_input_width: 256
+    nn_input_height: 256
+    device_reconnect_interval_s: 5.0

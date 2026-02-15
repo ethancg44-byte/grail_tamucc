@@ -1,0 +1,34 @@
+# Static transform parameters
+# Camera frame TF: oak_camera_frame is the parent of optical frames.
+# The transform from oak_camera_frame to a future px100 base_link
+# can be configured here and will be published as a static transform.
+
+camera_tf:
+  # oak_camera_frame -> oak_rgb_optical_frame
+  # Standard ROS optical frame convention: Z forward, X right, Y down
+  rgb_optical:
+    x: 0.0
+    y: 0.0
+    z: 0.0
+    roll: -1.5708   # -pi/2
+    pitch: 0.0
+    yaw: -1.5708    # -pi/2
+
+  # oak_camera_frame -> oak_depth_optical_frame
+  depth_optical:
+    x: 0.075   # baseline offset (~7.5cm for OAK-D Pro)
+    y: 0.0
+    z: 0.0
+    roll: -1.5708
+    pitch: 0.0
+    yaw: -1.5708
+
+# Placeholder: oak_camera_frame -> px100/base_link
+# Update these values with the measured transform once the arm is mounted.
+px100_base_link:
+  x: 0.0
+  y: 0.0
+  z: -0.20
+  roll: 0.0
+  pitch: 0.0
+  yaw: 0.0

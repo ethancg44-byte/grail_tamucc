@@ -1,0 +1,4 @@
+reachability_checker:
+  ros__parameters:
+    workspace_radius_m: 0.30
+    workspace_min_z_m: 0.05

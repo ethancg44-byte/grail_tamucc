@@ -1,0 +1,36 @@
+# ROS 2 build artifacts
+build/
+install/
+log/
+
+# Dataset directories
+data/
+
+# Training checkpoints
+checkpoints/
+
+# Export artifacts (keep config, ignore binaries)
+exports/*.onnx
+exports/*.xml
+exports/*.bin
+exports/*.blob
+exports/*.mapping
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.eggs/
+dist/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db

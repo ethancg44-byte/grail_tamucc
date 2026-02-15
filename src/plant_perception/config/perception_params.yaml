@@ -1,0 +1,27 @@
+perception_node:
+  ros__parameters:
+    # Segmentation class map
+    class_map_yaml: "{0: BACKGROUND, 1: LEAF, 2: STEM_OR_PETIOLE}"
+
+    # Skeletonization
+    skeleton_method: "opencv"  # "opencv" (cv2.ximgproc.thinning) or "zhang_suen"
+
+    # Branch-point detection
+    branch_kernel_size: 3
+
+    # Node temporal stabilization
+    node_association_max_dist_px: 30
+    node_max_age_frames: 10
+
+    # 3D projection
+    depth_min_mm: 100
+    depth_max_mm: 3000
+
+    # Cut selection thresholds
+    cut_y_threshold_px: 300   # nodes below this Y pixel are candidates
+    cut_leaf_density_radius_px: 50
+    cut_leaf_density_threshold: 0.4  # fraction of pixels that are LEAF within radius
+    cut_min_confidence: 0.3
+
+    # Debug overlay
+    publish_debug_overlay: true
