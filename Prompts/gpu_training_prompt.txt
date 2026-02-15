@@ -1,0 +1,100 @@
+# GPU Machine Task: Train & Export Plant Segmentation Model
+
+## Context
+
+You are working on a plant perception system for a vertical greenhouse. The ROS 2 perception pipeline and training scripts are already written and live in this repo. Your job is to execute the training pipeline on this GPU machine and produce a DepthAI `.blob` file that will be deployed to a Raspberry Pi 5 with an OAK-D Pro camera.
+
+The repo was cloned from: https://github.com/ethancg27-oss/grail_tamucc.git
+
+## What already exists in this repo
+
+- `scripts/datasets/synthetic_plants.py` — Dataset adapter that converts raw Synthetic Plants data to canonical format
+- `scripts/train_segmentation.py` — PyTorch training script for LRASPP-MobileNetV3-Large (3-class segmentation)
+- `scripts/validate_onnx.py` — ONNX inference validation with mIoU metrics
+- `scripts/export_to_openvino.sh` — ONNX to OpenVINO IR conversion
+- `scripts/compile_blob.sh` — OpenVINO IR to DepthAI .blob compilation
+- `requirements-training.txt` — All Python dependencies
+- `models/lraspp_mobilenetv3/config.yaml` — Model specification and integration contract
+
+## Integration contract (MUST match exactly)
+
+The OAK-D Pro camera node expects:
+- Input to blob: BGR888p (planar BGR uint8), 256x256
+- Output from blob: FP16 flat array reshaped to (3, 256, 256) → argmax → mono8 label mask
+- Classes: 0=BACKGROUND, 1=LEAF, 2=STEM_OR_PETIOLE
+
+The OpenVINO export bakes in BGR→RGB channel swap and ImageNet normalization so the blob receives raw uint8 from the camera with no preprocessing.
+
+## Steps to execute (in order)
+
+### Step 1: Install dependencies
+```bash
+pip install -r requirements-training.txt
+pip install dataset-tools
+```
+
+### Step 2: Download Synthetic Plants dataset (~818 MB)
+```bash
+python -c "import dataset_tools as dtools; dtools.download(dataset='Synthetic Plants', dst_dir='data/synthetic_plants_raw')"
+```
+
+### Step 3: Convert dataset to canonical format
+```bash
+python scripts/datasets/synthetic_plants.py \
+  --raw_dir data/synthetic_plants_raw \
+  --output_dir data/synthetic_plants
+```
+Expected output: ~10,000 image/mask pairs in data/synthetic_plants/ with 80/10/10 train/val/test splits. Masks should contain only values 0, 1, 2. Validation should pass with no warnings.
+
+### Step 4: Train the model
+```bash
+python scripts/train_segmentation.py \
+  --data_dirs data/synthetic_plants \
+  --output_dir checkpoints/run01 \
+  --epochs 50 \
+  --batch_size 8 \
+  --lr 0.001 \
+  --export_onnx
+```
+This trains LRASPP-MobileNetV3-Large with ImageNet pretrained weights, replaces the head for 3 classes, and exports ONNX after training. With a 4090, expect ~25-50 minutes. Target mIoU > 0.5 minimum, ideally 0.7+.
+
+### Step 5: Validate the ONNX export
+```bash
+python scripts/validate_onnx.py \
+  --onnx_path checkpoints/run01/model.onnx \
+  --image_dir data/synthetic_plants/images \
+  --mask_dir data/synthetic_plants/masks \
+  --output_dir exports/validation_results \
+  --max_images 100
+```
+Check exports/validation_results/ for overlay images. The reported mIoU should be close to training validation mIoU.
+
+### Step 6: Convert to OpenVINO IR
+```bash
+./scripts/export_to_openvino.sh checkpoints/run01/model.onnx exports/openvino
+```
+This produces exports/openvino/plant_seg_lraspp.xml and .bin with FP16 precision, baked normalization, and BGR→RGB swap.
+
+### Step 7: Compile to DepthAI blob
+```bash
+./scripts/compile_blob.sh exports/openvino/plant_seg_lraspp.xml exports 6
+```
+This uses blobconverter (Luxonis cloud service) to compile for Myriad X with 6 shaves. Produces exports/plant_seg_lraspp.blob.
+
+### Step 8: Transfer blob to Pi
+```bash
+scp exports/plant_seg_lraspp.blob grail@<pi-ip>:~/ros2_ws/exports/
+```
+
+## Troubleshooting
+
+- **Dataset download fails**: Try downloading Synthetic Plants manually from https://datasetninja.com/synthetic-plants or Kaggle
+- **Dataset adapter can't detect format**: Check what's inside data/synthetic_plants_raw/ — it should have subdirectories with img/ and ann/ (Supervisely) or images/ and annotations.json (COCO)
+- **Low mIoU after training**: Try increasing epochs to 100, lowering lr to 0.0005, or adjusting --class_weights
+- **ONNX export fails**: Ensure opset 12 compatibility (already set in script)
+- **OpenVINO mo fails**: Check openvino-dev version with `pip install --upgrade openvino-dev`
+- **blobconverter fails**: Luxonis cloud service may be down. See compile_blob.sh comments for local compile_tool alternative
+
+## What success looks like
+
+At the end you should have `exports/plant_seg_lraspp.blob` — a single file that gets copied to the Pi and dropped into the ROS 2 config. No code changes needed on the Pi side.
