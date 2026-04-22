@@ -190,28 +190,17 @@ class SyntheticPlantsAdapter(BaseAdapter):
         if not data_b64:
             return
 
-        # Decode base64 → zlib → raw bitmap
+        # Decode base64 → zlib → PNG image
         z_data = base64.b64decode(data_b64)
         raw = zlib.decompress(z_data)
-        bitmap = np.frombuffer(raw, dtype=np.uint8)
+        bitmap = cv2.imdecode(
+            np.frombuffer(raw, dtype=np.uint8), cv2.IMREAD_GRAYSCALE
+        )
+        if bitmap is None:
+            return
 
-        # Reconstruct bitmap shape from annotation
         h, w = mask.shape
         ox, oy = origin  # origin is [x, y]
-
-        # Bitmap is stored as a flat array of 0/1 values
-        bitmap_h = obj.get('bitmap', {}).get('rows', None)
-        bitmap_w = obj.get('bitmap', {}).get('cols', None)
-
-        if bitmap_h and bitmap_w:
-            bitmap = bitmap.reshape(bitmap_h, bitmap_w)
-        else:
-            # Try to infer shape from data length
-            n_pixels = len(bitmap)
-            # bitmap is a packed mask — each byte is 8 pixels
-            n_bits = n_pixels * 8
-            # This is complex; skip if shape info missing
-            return
 
         # Paint onto mask
         y_end = min(oy + bitmap.shape[0], h)

@@ -9,12 +9,25 @@ data/
 # Training checkpoints
 checkpoints/
 
-# Export artifacts (keep config, ignore binaries)
+# Export artifacts (keep blobs for Pi deployment, ignore intermediates)
 exports/*.onnx
 exports/*.xml
 exports/*.bin
-exports/*.blob
 exports/*.mapping
+exports/openvino/
+exports/openvino_640/
+exports/openvino_768/
+exports/test_768_norm/
+exports/test_with_norm/
+
+# Large media not needed for deployment
+microgreen_photos/
+microgreen_photos_jpg/
+microgreen_photos_raw/
+*.zip
+
+# Claude Code config
+.claude/
 
 # Python
 __pycache__/

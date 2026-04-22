@@ -1,0 +1,34 @@
+AI Model Training Overview
+
+The GRAIL plant segmentation model was developed through an iterative experimentation process spanning 33 training runs. The objective was to train a lightweight semantic segmentation network capable of classifying each pixel in a greenhouse image into one of three classes: Background, Leaf, or Stem/Petiole. The model is intended for real-time deployment on an OAK-D Pro depth camera powered by a Raspberry Pi 5.
+
+The architecture selected was LRASPP (Lite Reduced Atrous Spatial Pyramid Pooling) with a MobileNetV3-Large backbone, chosen for its balance of accuracy and inference speed on edge hardware. Training was conducted on a synthetic plant dataset consisting of 8,000 training images, 1,000 validation images, and 1,000 test images in Supervisely format.
+
+Across the 33 runs, several key hyperparameters were systematically explored:
+
+- Loss function: Cross-Entropy (CE), CE+Dice, CE+Tversky, CE+Lovasz, and pure Lovasz were compared. CE+Tversky (alpha=0.3, beta=0.7) produced the best results at higher resolutions by placing greater penalty on false negatives for minority classes like stem.
+- Input resolution: A sweep from 256px to 768px revealed that resolution was the single most impactful factor, improving mean IoU from 0.714 at 256px to 0.865 at 768px.
+- Class weights: Weights of 0.5/2.0/3.0 (Background/Leaf/Stem) were used to address class imbalance, upweighting the small but critical stem class.
+- Data augmentation: Basic augmentation (random flips, rotation, color jitter) outperformed strong augmentation strategies.
+- Stem sampling: A training strategy that oversamples crops containing stem pixels, providing a modest ~1% mIoU improvement.
+
+The best-performing configuration (Run 33) used LRASPP with CE+Tversky loss, basic augmentation, stem sampling, and 768px input resolution, trained for 150 epochs. It achieved a mean IoU of 86.49%.
+
+
+Figure Descriptions
+
+Simulation Results Table (simulation_results_updated.png)
+
+This table summarizes all 33 experiment runs conducted during model development. Each row represents a single training run with its configuration (model architecture, loss function, augmentation strategy, class weights, number of epochs, and input resolution) alongside its validation metrics (per-class IoU for Background, Leaf, and Stem, and overall mean IoU). Runs 01-07 predate metric logging and show no scores. The table illustrates the progression of improvements: early runs at 256px with CE loss achieved mIoU around 0.70, while the final runs at higher resolutions with CE+Tversky loss reached 0.865. Run 33 (highlighted in green) represents the best overall result, and Runs 31-32 (highlighted in blue) serve as strong alternatives at lower resolutions. Notable failed experiments include Run 17 (pure Lovasz loss, which diverged to 0.288 mIoU) and Runs 18-19 (DeepLabV3 architecture, which significantly underperformed LRASPP).
+
+IoU Bar Chart (iou_chart.png)
+
+This chart displays the per-class Intersection over Union (IoU) scores for the best model (Run 33, 768px). IoU measures the overlap between the model's predicted segmentation and the ground truth, calculated as the area of intersection divided by the area of union for each class. Background achieved the highest IoU at 95.7%, reflecting its large pixel share and simpler visual characteristics. Leaf followed at 84.1%, indicating strong performance on the primary plant tissue. Stem/Petiole scored 79.6%, the lowest of the three classes due to stems being thin, elongated structures that are inherently more difficult to segment. The overall mean IoU across all three classes was 86.49%. The stem IoU of 79.6% exceeds the project target of 70%, confirming the model's suitability for downstream robotic grasping tasks.
+
+Recall Matrix (recall_matrix.png)
+
+The recall matrix shows, for each ground truth class (rows), what percentage of its pixels the model correctly identified. Each row sums to 100%, answering the question: "Of all pixels that truly belong to this class, how many did the model find?" Background recall was 96.9%, meaning nearly all background pixels were correctly classified. Leaf recall was 94.0%, with the primary confusion being 4.7% of leaf pixels misclassified as background. Stem recall was 93.0%, with 5.1% of stem pixels misclassified as background and 1.9% confused with leaf. The high recall across all classes indicates the model rarely misses plant structures, which is critical for a robotic system that must reliably detect stems for grasping.
+
+Precision Matrix (precision_matrix.png)
+
+The precision matrix shows, for each predicted class (columns), what percentage of those predictions were actually correct. Each column sums to 100%, answering the question: "Of all pixels the model labeled as this class, how many truly belong to it?" Background precision was 98.7%, meaning predictions of background were almost always correct. Leaf precision was 88.9%, with 10.1% of predicted leaf pixels actually being background. Stem precision was 84.7%, with 13.2% of predicted stem pixels actually being background and 2.1% being leaf. The lower precision for stem compared to its recall (84.7% vs 93.0%) indicates the model occasionally over-predicts stem regions, which is a preferable failure mode for robotic grasping — it is better to slightly overestimate stem boundaries than to miss them entirely.

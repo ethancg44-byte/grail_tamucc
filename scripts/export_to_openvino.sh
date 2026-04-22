@@ -60,7 +60,7 @@ mo \
     --reverse_input_channels \
     --mean_values "[123.675,116.28,103.53]" \
     --scale_values "[58.395,57.12,57.375]" \
-    --input_shape "[1,3,256,256]"
+    --input_shape "[1,3,768,768]"
 
 echo ""
 echo "=== Export complete ==="
